@@ -67,6 +67,20 @@ $(document).ready(function () {
 
       });
 
+    map.addListener('zoom_changed', function() {
+        // 3 seconds after the center of the map has changed, pan back to the
+        // marker.
+        window.setTimeout(function() {
+        //   map.panTo(marker.getPosition());
+
+            var point = latLng2Point(location, map);
+        console.log( 'get point', point )
+            $('.marker').css('top', point.y)
+            $('.marker').css('left', point.x)
+        }, 500);
+
+      });
+
     // map.addListener('dragend', handleEvent);
     // $('#mask').forwardevents({directEventsTo:$('#map-canvas')} );
 
