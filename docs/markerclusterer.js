@@ -1080,7 +1080,7 @@ function MarkerClusterer(map, opt_markers, opt_options) {
     this.div_ = document.createElement('DIV');
     if (this.visible_) {
       var pos = this.getPosFromLatLng_(this.center_);
-      console.log('grap on add', this.center_, this.text_,pos.x, pos.y);
+      console.log('grap on add', this.center_.lat(),this.center_.lng(), this.text_,pos.x, pos.y);
       this.div_.style.cssText = this.createCss(pos);
       this.div_.innerHTML = this.sums_.text;
     }
