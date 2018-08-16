@@ -101,7 +101,7 @@ GraphCluster.prototype.createClusters = function () {
 GraphCluster.prototype.cleanCluster_ = function () {
     for (var i = 0, cluster; cluster = this.clusters_[i]; i++) {
         if (cluster.markers_.length < 2) {
-            cluster.graph_.remove();
+            cluster.remove();
             cluster = null;
             this.clusters_.splice(i, 1);
         }
@@ -309,9 +309,8 @@ function Graph(cluster) {
     this.visible_ = null;
     this.map_ = cluster.getMap();
     this.sums_ = '';
-    this.width_ = 40;
-    this.height_ = 40;
-    this.pos_ = null;
+    this.width_ = 50;
+    this.height_ = 50;
     this.expand_ = false;
     this.setMap(this.map_);
     this.chart_ = null;
@@ -327,6 +326,7 @@ Graph.prototype.onAdd = function () {
     this.div_.id = this.cluster_.getId();
     if (this.visible_) {
         var pos = this.getPosFromLatLng_(this.center_);
+    console.log('grap on add', this.center_.lat(),this.center_.lng(),this.div_.id, pos.x, pos.y);
         this.div_.style.cssText = this.createCss(pos);
     }
     // Add the element to the "overlayLayer" pane (API method).
@@ -341,11 +341,13 @@ Graph.prototype.onAdd = function () {
 // draw function will be called ever "idle" event
 Graph.prototype.draw = function () {
     // pos will changed ever "idle" event
-    var pos = this.getPosFromLatLng_(this.center_);
-    console.log('grap draw', this.center_,this.div_.id, pos.x, pos.y);
-    this.div_.style.top = pos.y + 'px';
-    this.div_.style.left = pos.x + 'px';
-    this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
+    if(this.visible_){
+        var pos = this.getPosFromLatLng_(this.center_);
+        // console.log('grap draw', this.center_.lat(),this.center_.lng(),this.div_.id, pos.x, pos.y);
+        this.div_.style.top = pos.y + 'px';
+        this.div_.style.left = pos.x + 'px';
+        this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
+    }
     if (!this.chart_ && this.visible_) {
         this.chart_ = this.initChart(this.div_.id);
     }
@@ -363,9 +365,14 @@ Graph.prototype.hide = function () {
     this.visible_ = false;
 };
 Graph.prototype.remove = function () {
-    if (this.chart_) {
+    if (this.chart_) { 
         this.chart_.dispose();
         this.chart_ = null;
+    }
+    if (this.div_ && this.div_.parentNode) {
+      this.hide();
+      this.div_.parentNode.removeChild(this.div_);
+      this.div_ = null;
     }
     this.setMap(null);
 };
@@ -380,7 +387,7 @@ Graph.prototype.show = function () {
 Graph.prototype.initChart = function (id) {
     var data = [{
         name: this.sums_ + '',
-        value: [15, 15],
+        value: [20, 20],
         // offset: [0, 0],
     }];
     var chart = echarts.init(document.getElementById(id), "macarons");
@@ -399,14 +406,14 @@ Graph.prototype.initChart = function (id) {
         xAxis: [{
             gridIndex: 0,
             min: 0,
-            max: 30,
+            max: 40,
             // show: true,
             show: false,
             nameLocation: 'middle',
         }],
         yAxis: [{
             min: 0,
-            max: 30,
+            max: 40,
             gridIndex: 0,
             // show: true,
             show: false,
@@ -415,7 +422,7 @@ Graph.prototype.initChart = function (id) {
         series: [{
             type: 'scatter',
             symbol: 'circle',
-            symbolSize: 30,
+            symbolSize: 40,
             label: {
                 normal: {
                     show: true,
@@ -446,9 +453,9 @@ Graph.prototype.createCss = function (pos) {
         style.push('cursor:pointer;color:' + txtColor + '; font-size:' +
             txtSize + 'px; font-family:Arial,sans-serif; font-weight:bold;');
         style.push('height:' + this.height_ + 'px; line-height:' +
-            this.height_ + 'px; width:' + this.width_ + 'px; text-align:center;');
+            this.height_ + 'px; width:' + this.width_ + 'px; text-align:center; position:absolute;');
         style.push('top:' + pos.y + 'px; left:' +
-            pos.x + 'px;  position:absolute;');
+            pos.x + 'px;');
     }
     return style.join('');
 };
