@@ -15,10 +15,10 @@ function initMap() {
             center: features[0].position,
             styles: nightStyle,
         });
-        // var newBoundary = new google.maps.LatLngBounds();
+        var newBoundary = new google.maps.LatLngBounds();
         // Create markers.
         var markers = features.map(f => {
-            // newBoundary.extend(f.position);
+            newBoundary.extend(f.position);
             return new google.maps.Marker({
                 position: f.position,
                 label: f.label,
@@ -33,7 +33,7 @@ function initMap() {
             });
         // var graphCluster = new GraphCluster(map, markers, null);
         setTimeout(function () {
-            // map.fitBounds(newBoundary);
+            map.fitBounds(newBoundary);
         }, 500);
 
 }
