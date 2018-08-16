@@ -389,6 +389,7 @@ Graph.prototype.initChart = function (id) {
         name: this.sums_ + '',
         value: [20, 20],
         // offset: [0, 0],
+        symbolSize: (40 - 30)/ (2749-2) * this.sums_ + 30 // min size 30, max size 40
     }];
     var chart = echarts.init(document.getElementById(id), "macarons");
     var option = {
