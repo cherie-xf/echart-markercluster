@@ -5,9 +5,11 @@ function GraphCluster(map, opt_markers, opt_options) {
     this.markers_ = [];
     this.clusters_ = [];
     this.ready_ = false;
-    var opts = opt_options || {};
-    this.gridSize_ = opts.gridSize || 60;
+    var opts_ = opt_options || {};
+    this.gridSize_ = opts_.gridSize || 60;
+    this.size_ = opts_.size;
     this.prevZoom_ = this.map_.getZoom();
+    this.totalNum_ = opt_markers ? opt_markers.length : 0;
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
@@ -89,7 +91,7 @@ GraphCluster.prototype.createClusters = function () {
     }
     var bounds = new google.maps.LatLngBounds(this.map_.getBounds().getSouthWest(),
         this.map_.getBounds().getNorthEast());
-        console.log('bounds', bounds);
+    console.log('bounds', bounds);
     for (var i = 0, m; m = this.markers_[i]; i++) {
         if (!m.isAdded && bounds.contains(m.getPosition())) {
             this.addToClosestCluster_(m);
@@ -217,6 +219,8 @@ function Cluster(graphCluster) {
     this.graphCluster_ = graphCluster;
     this.map_ = this.graphCluster_.map_;
     this.gridSize_ = this.graphCluster_.gridSize_;
+    this.size_ = this.graphCluster_.size_;
+    this.totalNum_ = this.graphCluster_.totalNum_;
     this.center_ = null;
     this.markers_ = [];
     this.bounds_ = null;
@@ -309,8 +313,10 @@ function Graph(cluster) {
     this.visible_ = null;
     this.map_ = cluster.getMap();
     this.sums_ = '';
-    this.width_ = 50;
-    this.height_ = 50;
+    this.size_ = cluster.size_ ? cluster.size_ : {max: 40, min: 30};
+    this.totalNum_ = cluster.totalNum_;
+    this.width_ = this.size_.max + 10;
+    this.height_ = this.size_.max + 10;
     this.expand_ = false;
     this.setMap(this.map_);
     this.chart_ = null;
@@ -326,7 +332,7 @@ Graph.prototype.onAdd = function () {
     this.div_.id = this.cluster_.getId();
     if (this.visible_) {
         var pos = this.getPosFromLatLng_(this.center_);
-    console.log('grap on add', this.center_.lat(),this.center_.lng(),this.div_.id, pos.x, pos.y);
+        console.log('grap on add', this.center_.lat(), this.center_.lng(), this.div_.id, pos.x, pos.y);
         this.div_.style.cssText = this.createCss(pos);
     }
     // Add the element to the "overlayLayer" pane (API method).
@@ -341,7 +347,7 @@ Graph.prototype.onAdd = function () {
 // draw function will be called ever "idle" event
 Graph.prototype.draw = function () {
     // pos will changed ever "idle" event
-    if(this.visible_){
+    if (this.visible_) {
         var pos = this.getPosFromLatLng_(this.center_);
         // console.log('grap draw', this.center_.lat(),this.center_.lng(),this.div_.id, pos.x, pos.y);
         this.div_.style.top = pos.y + 'px';
@@ -365,14 +371,14 @@ Graph.prototype.hide = function () {
     this.visible_ = false;
 };
 Graph.prototype.remove = function () {
-    if (this.chart_) { 
+    if (this.chart_) {
         this.chart_.dispose();
         this.chart_ = null;
     }
     if (this.div_ && this.div_.parentNode) {
-      this.hide();
-      this.div_.parentNode.removeChild(this.div_);
-      this.div_ = null;
+        this.hide();
+        this.div_.parentNode.removeChild(this.div_);
+        this.div_ = null;
     }
     this.setMap(null);
 };
@@ -385,11 +391,16 @@ Graph.prototype.show = function () {
     this.visible_ = true;
 };
 Graph.prototype.initChart = function (id) {
+    var center = this.size_.max / 2;
+    var symbolSize = (this.size_.max - this.size_.min) / (this.totalNum_ - 2) *
+        this.sums_ + this.size_.min;
     var data = [{
         name: this.sums_ + '',
-        value: [20, 20],
+        // value: [20, 20],
+        value: [center, center],
         // offset: [0, 0],
-        symbolSize: (40 - 30)/ (2749-2) * this.sums_ + 30 // min size 30, max size 40
+        // symbolSize: (40 - 30) / (2749 - 2) * this.sums_ + 30 // min size 30, max size 40
+        symbolSize: symbolSize,
     }];
     var chart = echarts.init(document.getElementById(id), "macarons");
     var option = {
@@ -407,14 +418,14 @@ Graph.prototype.initChart = function (id) {
         xAxis: [{
             gridIndex: 0,
             min: 0,
-            max: 40,
+            max: this.size_.max,
             // show: true,
             show: false,
             nameLocation: 'middle',
         }],
         yAxis: [{
             min: 0,
-            max: 40,
+            max: this.size_.max,
             gridIndex: 0,
             // show: true,
             show: false,
@@ -423,7 +434,7 @@ Graph.prototype.initChart = function (id) {
         series: [{
             type: 'scatter',
             symbol: 'circle',
-            symbolSize: 40,
+            symbolSize: this.size_.max,
             label: {
                 normal: {
                     show: true,
@@ -440,8 +451,11 @@ Graph.prototype.initChart = function (id) {
                     opacity: 0.8,
                 }
             },
-            data: data
-        }]
+            data: data,
+            animationDelay: parseInt(id.split('_')[1]) * 10,
+        }],
+        // animationEasing: 'elasticOut',
+        animationDelayUpdate: parseInt(id.split('_')[1]) * 10, 
     };
     chart.setOption(option);
     return chart
@@ -461,17 +475,17 @@ Graph.prototype.createCss = function (pos) {
     return style.join('');
 };
 
-var window = window || {};
-window['GraphCluster'] = GraphCluster;
-Object.keys = Object.keys || function (o) {
-    var result = [];
-    for (var name in o) {
-        if (o.hasOwnProperty(name))
-            result.push(name);
-    }
-    return result;
-};
+// var window = window || {};
+// window['GraphCluster'] = GraphCluster;
+// Object.keys = Object.keys || function (o) {
+//     var result = [];
+//     for (var name in o) {
+//         if (o.hasOwnProperty(name))
+//             result.push(name);
+//     }
+//     return result;
+// };
 
-if (typeof module == 'object') {
-    module.exports = GraphCluster;
-}
+// if (typeof module == 'object') {
+//     module.exports = GraphCluster;
+// }
