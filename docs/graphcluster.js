@@ -475,17 +475,9 @@ Graph.prototype.createCss = function (pos) {
     return style.join('');
 };
 
-// var window = window || {};
-// window['GraphCluster'] = GraphCluster;
-// Object.keys = Object.keys || function (o) {
-//     var result = [];
-//     for (var name in o) {
-//         if (o.hasOwnProperty(name))
-//             result.push(name);
-//     }
-//     return result;
-// };
-
-// if (typeof module == 'object') {
-//     module.exports = GraphCluster;
-// }
+/*
+ * Created Date: Monday, August 20th 2018, 00:15:02 am
+ * Author: cheriefu
+ * 
+ * Copyright (c) 2018 Cherie Fu
+ */
