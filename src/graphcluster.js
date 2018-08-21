@@ -16,9 +16,13 @@ function GraphCluster(map, opt_markers, opt_options) {
     if(opts_.clickControl){
         var clickControlDiv = document.createElement('div');
         var clickControl = new ClickControl(clickControlDiv, this.map_);
+        this.clickControl_ = clickControl;
         clickControlDiv.index = 1;
         clickControlDiv.style['margin-top'] = '10px';
         clickControlDiv.style['display'] = 'flex';
+        clickControlDiv.style['border-radius'] = '2px';
+        clickControlDiv.style['background-color'] = 'white';
+        clickControlDiv.style['padding'] = '5px';
 
         map.controls[google.maps.ControlPosition.TOP_CENTER].push(clickControlDiv);
     }
@@ -220,6 +224,10 @@ GraphCluster.prototype.getExtendedBounds = function (bounds) {
 
     return bounds;
 };
+
+GraphCluster.prototype.isZoomOnClick = function(){
+    return this.clickControl_.getZoomin();
+}
 
 /**
  * @param {GraphCluster} graphCluster 
@@ -491,29 +499,43 @@ Graph.prototype.triggerClusterClick = function () {
     var graphCluster = this.cluster_.getGraphCluster();
     // TODO: Trigger the clusterclick event. 
     google.maps.event.trigger(graphCluster.map_, 'clusterclick', this.cluster_);
-    // if (graphCluster.isZoomOnClick()) {
+    if (graphCluster.isZoomOnClick()) {
     //Zoom into the cluster.
     this.map_.fitBounds(this.cluster_.getBounds());
-    // }
+    }
 };
 
 function ClickControl(dom, map) {
+    this.zoomin_ = true; 
     var zoominUI = document.createElement('div');
     zoominUI.id = "zoominUI";
-    zoominUI.title = "zoom in after cluster clicked";
+    zoominUI.title = "cluster click zoom in";
     var zoominUrl = '../images/zoom_in.png'
     zoominUI.style.cssText = this.createControlCss(zoominUrl);
-    zoominUI.style['border-right'] = '1px solid #666666';
-    zoominUI.style['border-top-right-radius'] = '2px';
+    zoominUI.style['border-right'] = '1px solid #888888';
+    zoominUI.style['opacity'] = '1';
 
     dom.appendChild(zoominUI);
 
     var spiderUI = document.createElement('div');
     spiderUI.id = "spiderUI";
-    spiderUI.title = "expand spider after cluster clicked";
+    spiderUI.title = "cluster click expand spider";
     var spiderUrl = '../images/spider.png'
     spiderUI.style.cssText = this.createControlCss(spiderUrl);
     dom.appendChild(spiderUI);
+    // Setup the click event listeners: simply set the map to Chicago.
+    var that = this;
+    zoominUI.addEventListener('click', function() {
+        zoominUI.style['opacity'] = '1';
+        spiderUI.style['opacity'] = '0.5';
+        that.setZoomin(true);
+      });
+    // Setup the click event listeners: simply set the map to Chicago.
+    spiderUI.addEventListener('click', function() {
+        spiderUI.style['opacity'] = '1';
+        zoominUI.style['opacity'] = '0.5';
+        that.setZoomin(false);
+      });
 
 }
 ClickControl.prototype.createControlCss = function(url){
@@ -523,10 +545,17 @@ ClickControl.prototype.createControlCss = function(url){
     style.push('background-image:url(' + url + ');');
     style.push('height:' + height + 'px; line-height:' +
         this.height_ + 'px; width:' + width + 'px; text-align:center;');
-    style.push('cursor:pointer;opacity:0.6;padding: 8px;');
+    style.push('cursor:pointer;opacity:0.5;padding: 6px;');
     style.push('background-color: white;background-repeat: no-repeat;background-position: center;')
     return style.join('');
 };
+ClickControl.prototype.setZoomin = function(zoomin){
+    this.zoomin_ = zoomin;
+}
+ClickControl.prototype.getZoomin = function(){
+    console.log('get control zoom in', this.zoomin_);
+    return this.zoomin_;
+}
 
 /*
  * Created Date: Monday, August 20th 2018, 00:15:02 am
