@@ -13,6 +13,15 @@ function GraphCluster(map, opt_markers, opt_options) {
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
+    if(opts_.clickControl){
+        var clickControlDiv = document.createElement('div');
+        var clickControl = new ClickControl(clickControlDiv, this.map_);
+        clickControlDiv.index = 1;
+        clickControlDiv.style['margin-top'] = '10px';
+        clickControlDiv.style['display'] = 'flex';
+
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(clickControlDiv);
+    }
 
     // Add map event listerners
     google.maps.event.addListener(this.map_, 'zoom_changed', function () {
@@ -313,7 +322,7 @@ function Graph(cluster) {
     this.visible_ = null;
     this.map_ = cluster.getMap();
     this.sums_ = '';
-    this.size_ = cluster.size_ ? cluster.size_ : {max: 40, min: 30};
+    this.size_ = cluster.size_ ? cluster.size_ : { max: 40, min: 30 };
     this.totalNum_ = cluster.totalNum_;
     this.width_ = this.size_.max + 10;
     this.height_ = this.size_.max + 10;
@@ -455,7 +464,7 @@ Graph.prototype.initChart = function (id) {
             animationDelay: parseInt(id.split('_')[1]) * 10,
         }],
         // animationEasing: 'elasticOut',
-        animationDelayUpdate: parseInt(id.split('_')[1]) * 10, 
+        animationDelayUpdate: parseInt(id.split('_')[1]) * 10,
     };
     chart.setOption(option);
     return chart
@@ -472,6 +481,50 @@ Graph.prototype.createCss = function (pos) {
         style.push('top:' + pos.y + 'px; left:' +
             pos.x + 'px;');
     }
+    return style.join('');
+};
+
+/**
+ * Triggers the clusterclick event and zoom's if the option is set.
+ */
+Graph.prototype.triggerClusterClick = function () {
+    var graphCluster = this.cluster_.getGraphCluster();
+    // TODO: Trigger the clusterclick event. 
+    google.maps.event.trigger(graphCluster.map_, 'clusterclick', this.cluster_);
+    // if (graphCluster.isZoomOnClick()) {
+    //Zoom into the cluster.
+    this.map_.fitBounds(this.cluster_.getBounds());
+    // }
+};
+
+function ClickControl(dom, map) {
+    var zoominUI = document.createElement('div');
+    zoominUI.id = "zoominUI";
+    zoominUI.title = "zoom in after cluster clicked";
+    var zoominUrl = '../images/zoom_in.png'
+    zoominUI.style.cssText = this.createControlCss(zoominUrl);
+    zoominUI.style['border-right'] = '1px solid #666666';
+    zoominUI.style['border-top-right-radius'] = '2px';
+
+    dom.appendChild(zoominUI);
+
+    var spiderUI = document.createElement('div');
+    spiderUI.id = "spiderUI";
+    spiderUI.title = "expand spider after cluster clicked";
+    var spiderUrl = '../images/spider.png'
+    spiderUI.style.cssText = this.createControlCss(spiderUrl);
+    dom.appendChild(spiderUI);
+
+}
+ClickControl.prototype.createControlCss = function(url){
+    var style = [];
+    var height = 18; 
+    var width = 18; 
+    style.push('background-image:url(' + url + ');');
+    style.push('height:' + height + 'px; line-height:' +
+        this.height_ + 'px; width:' + width + 'px; text-align:center;');
+    style.push('cursor:pointer;opacity:0.6;padding: 8px;');
+    style.push('background-color: white;background-repeat: no-repeat;background-position: center;')
     return style.join('');
 };
 
