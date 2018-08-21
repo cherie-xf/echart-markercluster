@@ -1,3 +1,9 @@
+/*
+ * Created Date: Monday, August 20th 2018, 00:15:02 am
+ * Author: cheriefu
+ * 
+ * Copyright (c) 2018 Cherie Fu
+ */
 function GraphCluster(map, opt_markers, opt_options) {
     this.extend(GraphCluster, google.maps.OverlayView);
     // Initialize all properties.
@@ -13,19 +19,10 @@ function GraphCluster(map, opt_markers, opt_options) {
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
-    if(opts_.clickControl){
-        var clickControlDiv = document.createElement('div');
-        var clickControl = new ClickControl(clickControlDiv, this.map_);
-        this.clickControl_ = clickControl;
-        clickControlDiv.index = 1;
-        clickControlDiv.style['margin-top'] = '10px';
-        clickControlDiv.style['display'] = 'flex';
-        clickControlDiv.style['border-radius'] = '2px';
-        clickControlDiv.style['background-color'] = 'white';
-        clickControlDiv.style['padding'] = '5px';
-
-        map.controls[google.maps.ControlPosition.TOP_CENTER].push(clickControlDiv);
+    if (opts_.clickControl) {
+        this.clickControl_ = new ClickControl(this.map_);
     }
+    this.tooltip_ = new MarkerTooltip(this);
 
     // Add map event listerners
     google.maps.event.addListener(this.map_, 'zoom_changed', function () {
@@ -84,8 +81,9 @@ GraphCluster.prototype.draw = function () {
  * API Method
  */
 GraphCluster.prototype.onRemove = function () {
-    this.div_.parentNode.removeChild(this.div_);
-    this.div_ = null;
+    //need to remove marker tooltip
+    console.log('call on remove, remove tooltip');
+    this.tooltip_.setMap(null);
 };
 // private method
 GraphCluster.prototype.initMarkers = function (markers) {
@@ -111,6 +109,7 @@ GraphCluster.prototype.createClusters = function () {
         }
     }
     this.cleanCluster_();
+    this.addTooltipEventToMarkers();
 };
 // private remove marker number less than 2
 GraphCluster.prototype.cleanCluster_ = function () {
@@ -225,8 +224,28 @@ GraphCluster.prototype.getExtendedBounds = function (bounds) {
     return bounds;
 };
 
-GraphCluster.prototype.isZoomOnClick = function(){
-    return this.clickControl_.getZoomin();
+GraphCluster.prototype.isZoomOnClick = function () {
+    return this.clickControl_ && this.clickControl_.getZoomin();
+}
+GraphCluster.prototype.getTooltip = function () {
+    return this.tooltip_;
+}
+GraphCluster.prototype.addTooltipEventToMarkers = function () {
+    var that = this;
+    for (var i = 0, m; m = this.markers_[i]; i++) {
+        if (m.map) {
+            m.addListener('mouseover', function (event) {
+                if (event) {
+                    that.getTooltip().show(event.latLng);
+                }
+            });
+            m.addListener('mouseout', function (event) {
+                if (that.getTooltip().getVisible()) {
+                    that.getTooltip().hide();
+                }
+            });
+        }
+    }
 }
 
 /**
@@ -320,7 +339,7 @@ Cluster.prototype.remove = function () {
     delete this.markers_;
 };
 /**
- * a "graph" type of echart
+ * a "scatter" type of echart as Cluster Icon
  */
 function Graph(cluster) {
     cluster.getGraphCluster().extend(Graph, google.maps.OverlayView);
@@ -399,6 +418,8 @@ Graph.prototype.remove = function () {
     }
     this.setMap(null);
 };
+// This method is called once following a call to setMap(null).
+Graph.prototype.onRemove = function () { };
 Graph.prototype.show = function () {
     if (this.div_) {
         var pos = this.getPosFromLatLng_(this.center_);
@@ -469,10 +490,10 @@ Graph.prototype.initChart = function (id) {
                 }
             },
             data: data,
-            animationDelay: parseInt(id.split('_')[1]) * 10,
+            animationDelay: parseInt(id.split('_')[1]) * 20,
         }],
         // animationEasing: 'elasticOut',
-        animationDelayUpdate: parseInt(id.split('_')[1]) * 10,
+        animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
     chart.setOption(option);
     return chart
@@ -500,13 +521,31 @@ Graph.prototype.triggerClusterClick = function () {
     // TODO: Trigger the clusterclick event. 
     google.maps.event.trigger(graphCluster.map_, 'clusterclick', this.cluster_);
     if (graphCluster.isZoomOnClick()) {
-    //Zoom into the cluster.
-    this.map_.fitBounds(this.cluster_.getBounds());
+        //Zoom into the cluster.
+        this.map_.fitBounds(this.cluster_.getBounds());
     }
 };
+/**
+ * Class of ClickControl
+ * @param {*} map 
+ * Cluster click control to switch between showing spider or zoom in
+ */
+function ClickControl(map) {
+    this.clickControlUI_ = document.getElementById('click-control');
+    if (!this.clickControlUI_) {
+        this.clickControlUI_ = document.createElement('div');
+        this.clickControlUI_.id = "click-control";
+        this.clickControlUI_.index = 1;
+        this.clickControlUI_.style['margin-top'] = '10px';
+        this.clickControlUI_.style['display'] = 'flex';
+        this.clickControlUI_.style['border-radius'] = '2px';
+        this.clickControlUI_.style['background-color'] = 'white';
+        this.clickControlUI_.style['padding'] = '5px';
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(this.clickControlUI_);
 
-function ClickControl(dom, map) {
-    this.zoomin_ = true; 
+    }
+
+    this.zoomin_ = true;
     var zoominUI = document.createElement('div');
     zoominUI.id = "zoominUI";
     zoominUI.title = "cluster click zoom in";
@@ -515,33 +554,33 @@ function ClickControl(dom, map) {
     zoominUI.style['border-right'] = '1px solid #888888';
     zoominUI.style['opacity'] = '1';
 
-    dom.appendChild(zoominUI);
+    this.clickControlUI_.appendChild(zoominUI);
 
     var spiderUI = document.createElement('div');
     spiderUI.id = "spiderUI";
     spiderUI.title = "cluster click expand spider";
     var spiderUrl = '../images/spider.png'
     spiderUI.style.cssText = this.createControlCss(spiderUrl);
-    dom.appendChild(spiderUI);
+    this.clickControlUI_.appendChild(spiderUI);
     // Setup the click event listeners: simply set the map to Chicago.
     var that = this;
-    zoominUI.addEventListener('click', function() {
+    zoominUI.addEventListener('click', function () {
         zoominUI.style['opacity'] = '1';
         spiderUI.style['opacity'] = '0.5';
         that.setZoomin(true);
-      });
+    });
     // Setup the click event listeners: simply set the map to Chicago.
-    spiderUI.addEventListener('click', function() {
+    spiderUI.addEventListener('click', function () {
         spiderUI.style['opacity'] = '1';
         zoominUI.style['opacity'] = '0.5';
         that.setZoomin(false);
-      });
+    });
 
 }
-ClickControl.prototype.createControlCss = function(url){
+ClickControl.prototype.createControlCss = function (url) {
     var style = [];
-    var height = 18; 
-    var width = 18; 
+    var height = 18;
+    var width = 18;
     style.push('background-image:url(' + url + ');');
     style.push('height:' + height + 'px; line-height:' +
         this.height_ + 'px; width:' + width + 'px; text-align:center;');
@@ -549,17 +588,71 @@ ClickControl.prototype.createControlCss = function(url){
     style.push('background-color: white;background-repeat: no-repeat;background-position: center;')
     return style.join('');
 };
-ClickControl.prototype.setZoomin = function(zoomin){
+ClickControl.prototype.setZoomin = function (zoomin) {
     this.zoomin_ = zoomin;
 }
-ClickControl.prototype.getZoomin = function(){
+ClickControl.prototype.getZoomin = function () {
     console.log('get control zoom in', this.zoomin_);
     return this.zoomin_;
 }
 
-/*
- * Created Date: Monday, August 20th 2018, 00:15:02 am
- * Author: cheriefu
- * 
- * Copyright (c) 2018 Cherie Fu
- */
+function MarkerTooltip(graphCluster) {
+    graphCluster.extend(MarkerTooltip, google.maps.OverlayView);
+    this.graphCluster_ = graphCluster;
+    this.map_ = this.graphCluster_.map_;
+    this.div_ = null;
+    this.visible_ = null;
+    this.setMap(this.map_);
+}
+MarkerTooltip.prototype.onAdd = function () {
+    this.div_ = document.createElement('div');
+    this.div_.id = "marker-tooltip";
+    this.div_.style.display = 'none';
+    this.div_.style.cssText = this.createTooltipCss();
+    // Add the element to the "overlayLayer" pane (API method).
+    var panes = this.getPanes();
+    panes.overlayMouseTarget.appendChild(this.div_);
+};
+MarkerTooltip.prototype.draw = function () {
+    this.hide();
+}
+MarkerTooltip.prototype.onRemove = function () {
+    if (this.div_ && this.div_.parentNode) {
+        this.hide();
+        this.div_.parentNode.removeChild(this.div_);
+        this.div_ = null;
+    }
+}
+MarkerTooltip.prototype.createTooltipCss = function () {
+    var style = [];
+    var height = 80;
+    var width = 80;
+    style.push('background-color:rgba(50,50,50,0.7);border-radius: 4px; color: rgb(255,255,255);');
+    style.push('padding: 5px;z-index:99999;white-space: nowrap;');
+    style.push('transition: left 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s, top 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s;');
+    style.push('height:' + height + 'px; line-height:' +
+        this.height_ + 'px; width:' + width + 'px; position:absolute;');
+    return style.join('');
+};
+MarkerTooltip.prototype.show = function (latlng) {
+    var pos = this.getPosFromLatLng_(latlng);
+    if (this.div_ && pos) {
+        this.div_.style.top = pos.y + 'px';
+        this.div_.style.left = pos.x + 'px';
+        this.div_.style.display = '';
+    }
+    this.visible_ = true;
+}
+MarkerTooltip.prototype.hide = function () {
+    if (this.div_) {
+        this.div_.style.display = 'none'
+    }
+}
+
+MarkerTooltip.prototype.getPosFromLatLng_ = function (latlng) {
+    return this.graphCluster_.getProjection().fromLatLngToDivPixel(latlng);
+}
+MarkerTooltip.prototype.getVisible = function () {
+    return this.visible_;
+}
+
