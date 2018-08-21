@@ -4,22 +4,27 @@
  * 
  * Copyright (c) 2018 Cherie Fu
  */
-function GraphCluster(map, opt_markers, opt_options) {
+function GraphCluster(map, opt_data, opt_options) {
     this.extend(GraphCluster, google.maps.OverlayView);
     // Initialize all properties.
     this.map_ = map;
     this.markers_ = [];
     this.clusters_ = [];
     this.ready_ = false;
-    var opts_ = opt_options || {};
-    this.gridSize_ = opts_.gridSize || 60;
-    this.size_ = opts_.size;
+    this.opts_ = opt_options || {};
+    this.data_ = opt_data;
+    this.gridSize_ = this.opts_.gridSize || 60;
+    this.size_ = this.opts_.size;
+    this.markerImg_ = this.opts_.markerImg || {
+        url: '../images/marker1.png',
+        scaledSize: new google.maps.Size(40, 40),
+    };
     this.prevZoom_ = this.map_.getZoom();
-    this.totalNum_ = opt_markers ? opt_markers.length : 0;
+    this.totalNum_ = opt_data ? opt_data.length : 0;
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
-    if (opts_.clickControl) {
+    if (this.opts_.clickControl) {
         this.clickControl_ = new ClickControl(this.map_);
     }
     this.tooltip_ = new MarkerTooltip(this);
@@ -38,8 +43,8 @@ function GraphCluster(map, opt_markers, opt_options) {
         that.createClusters();
     })
     // init cluster
-    if (opt_markers && opt_markers.length > 0) {
-        this.initMarkers(opt_markers);
+    if (this.data_ && this.data_.length > 0) {
+        this.initMarkers(this.data_);
     }
     this.createClusters();
 }
@@ -86,30 +91,35 @@ GraphCluster.prototype.onRemove = function () {
     this.tooltip_.setMap(null);
 };
 // private method
-GraphCluster.prototype.initMarkers = function (markers) {
+GraphCluster.prototype.initMarkers = function (data) {
     var bounds = new google.maps.LatLngBounds();
-    for (var i = 0, m; m = markers[i]; i++) {
-        bounds.extend(m.getPosition());
-        this.markers_.push(m);
+    for (var i = 0, d; d = data[i]; i++) {
+        var marker = new google.maps.Marker({
+            position: d.position,
+            label: d.label,
+            icon: this.markerImg_,
+            map: this.map_,
+            oData: d,
+        });
+        bounds.extend(marker.getPosition());
+        this.markers_.push(marker);
     }
     this.map_.fitBounds(bounds);
 };
 // private method
 GraphCluster.prototype.createClusters = function () {
-    console.log('zoom', this.prevZoom_);
     if (!this.ready_) {
         return;
     }
     var bounds = new google.maps.LatLngBounds(this.map_.getBounds().getSouthWest(),
         this.map_.getBounds().getNorthEast());
-    console.log('bounds', bounds);
     for (var i = 0, m; m = this.markers_[i]; i++) {
         if (!m.isAdded && bounds.contains(m.getPosition())) {
             this.addToClosestCluster_(m);
         }
     }
     this.cleanCluster_();
-    this.addTooltipEventToMarkers();
+    this.addMarkersListener();
 };
 // private remove marker number less than 2
 GraphCluster.prototype.cleanCluster_ = function () {
@@ -230,22 +240,39 @@ GraphCluster.prototype.isZoomOnClick = function () {
 GraphCluster.prototype.getTooltip = function () {
     return this.tooltip_;
 }
-GraphCluster.prototype.addTooltipEventToMarkers = function () {
+GraphCluster.prototype.addMarkersListener = function () {
     var that = this;
     for (var i = 0, m; m = this.markers_[i]; i++) {
         if (m.map) {
-            m.addListener('mouseover', function (event) {
-                if (event) {
-                    that.getTooltip().show(event.latLng);
-                }
-            });
-            m.addListener('mouseout', function (event) {
-                if (that.getTooltip().getVisible()) {
-                    that.getTooltip().hide();
-                }
-            });
+            this.attachTooltipEvent_(m);
         }
     }
+}
+GraphCluster.prototype.attachTooltipEvent_ = function (marker, handle) {
+    var that = this;
+    marker.addListener('mouseover', function () {
+        if (marker.getMap()) {
+            that.getTooltip().show(marker.getPosition(), that.getTooltipContent_(marker.oData));
+        }
+    });
+    marker.addListener('mouseout', function () {
+        if (that.getTooltip().getVisible()) {
+            that.getTooltip().hide();
+        }
+    });
+}
+GraphCluster.prototype.getTooltipContent_ = function (oData) {
+    var html = [];
+    html.push('<table>');
+    for (var i = 0, key; key = Object.keys(oData)[i]; i++) {
+        html.push('<tr>');
+        html.push('<td>' + key + '</td>');
+        html.push('<td>' + oData[key] + '</td>');
+        html.push('</tr>');
+    }
+    html.push('</table>');
+    return html.join('');
+
 }
 
 /**
@@ -368,7 +395,6 @@ Graph.prototype.onAdd = function () {
     this.div_.id = this.cluster_.getId();
     if (this.visible_) {
         var pos = this.getPosFromLatLng_(this.center_);
-        console.log('grap on add', this.center_.lat(), this.center_.lng(), this.div_.id, pos.x, pos.y);
         this.div_.style.cssText = this.createCss(pos);
     }
     // Add the element to the "overlayLayer" pane (API method).
@@ -385,7 +411,6 @@ Graph.prototype.draw = function () {
     // pos will changed ever "idle" event
     if (this.visible_) {
         var pos = this.getPosFromLatLng_(this.center_);
-        // console.log('grap draw', this.center_.lat(),this.center_.lng(),this.div_.id, pos.x, pos.y);
         this.div_.style.top = pos.y + 'px';
         this.div_.style.left = pos.x + 'px';
         this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
@@ -592,7 +617,6 @@ ClickControl.prototype.setZoomin = function (zoomin) {
     this.zoomin_ = zoomin;
 }
 ClickControl.prototype.getZoomin = function () {
-    console.log('get control zoom in', this.zoomin_);
     return this.zoomin_;
 }
 
@@ -611,7 +635,7 @@ MarkerTooltip.prototype.onAdd = function () {
     this.div_.style.cssText = this.createTooltipCss();
     // Add the element to the "overlayLayer" pane (API method).
     var panes = this.getPanes();
-    panes.overlayMouseTarget.appendChild(this.div_);
+    panes.floatPane.appendChild(this.div_);
 };
 MarkerTooltip.prototype.draw = function () {
     this.hide();
@@ -625,21 +649,23 @@ MarkerTooltip.prototype.onRemove = function () {
 }
 MarkerTooltip.prototype.createTooltipCss = function () {
     var style = [];
-    var height = 80;
-    var width = 80;
+    // var height = 80;
+    // var width = 80;
+    style.push('position:absolute;');
     style.push('background-color:rgba(50,50,50,0.7);border-radius: 4px; color: rgb(255,255,255);');
     style.push('padding: 5px;z-index:99999;white-space: nowrap;');
     style.push('transition: left 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s, top 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s;');
-    style.push('height:' + height + 'px; line-height:' +
-        this.height_ + 'px; width:' + width + 'px; position:absolute;');
+    // style.push('height:' + height + 'px; line-height:' +
+    //     this.height_ + 'px; width:' + width + 'px;');
     return style.join('');
 };
-MarkerTooltip.prototype.show = function (latlng) {
+MarkerTooltip.prototype.show = function (latlng, content) {
     var pos = this.getPosFromLatLng_(latlng);
     if (this.div_ && pos) {
         this.div_.style.top = pos.y + 'px';
         this.div_.style.left = pos.x + 'px';
         this.div_.style.display = '';
+        this.div_.innerHTML = content;
     }
     this.visible_ = true;
 }
