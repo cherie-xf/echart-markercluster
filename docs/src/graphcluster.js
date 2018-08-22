@@ -412,6 +412,9 @@ Graph.prototype.onAdd = function () {
     google.maps.event.addDomListener(this.div_, 'click', function () {
         that.triggerClusterClick();
     });
+    if (!this.chart_ && this.visible_) {
+        this.chart_ = this.initChart(this.div_.id);
+    }
 };
 // draw function will be called ever "idle" event
 Graph.prototype.draw = function () {
@@ -421,9 +424,6 @@ Graph.prototype.draw = function () {
         this.div_.style.top = pos.y + 'px';
         this.div_.style.left = pos.x + 'px';
         this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
-    }
-    if (!this.chart_ && this.visible_) {
-        this.chart_ = this.initChart(this.div_.id);
     }
 };
 Graph.prototype.getPosFromLatLng_ = function (latlng) {
