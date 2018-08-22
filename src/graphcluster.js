@@ -252,7 +252,8 @@ GraphCluster.prototype.attachTooltipEvent_ = function (marker, handle) {
     var that = this;
     marker.addListener('mouseover', function () {
         if (marker.getMap()) {
-            that.getTooltip().show(marker.getPosition(), that.getTooltipContent_(marker.oData));
+            that.getTooltip().show(marker.getPosition(),
+                that.getTooltipContent_(marker.oData));
         }
     });
     marker.addListener('mouseout', function () {
@@ -357,7 +358,7 @@ Cluster.prototype.setId = function (id) {
 Cluster.prototype.getId = function () {
     return this.id_
 };
-Cluster.prototype.getMarkers = function(){
+Cluster.prototype.getMarkers = function () {
     return this.markers_;
 }
 /**
@@ -470,18 +471,20 @@ Graph.prototype.initChart = function (id) {
         // offset: [0, 0],
         // symbolSize: (40 - 30) / (2749 - 2) * this.sums_ + 30 // min size 30, max size 40
         symbolSize: symbolSize,
+        markers: this.cluster_.getMarkers(),
     }];
-    var spiderData = this.cluster_.getMarkers().map(function(m){
+    var spiderData = this.cluster_.getMarkers().map(function (m) {
         return {
             name: m.oData.id,
             symbolSize: 15,
+            oData: m.oData,
         };
     });
     spiderData.unshift({
         name: 'cluster',
         symbolSize: 1,
     });
-    var spiderLinks = spiderData.map(function(d,i){
+    var spiderLinks = spiderData.map(function (d, i) {
         return {
             source: 0,
             target: i,
@@ -491,7 +494,21 @@ Graph.prototype.initChart = function (id) {
     this.scatterOpt_ = {
         tooltip: {
             trigger: 'item',
-            formatter: "{b}"
+            formatter: function (obj) {
+                var html = ['<dl style="margin: 20px 20px;"><dd style="margin: 0;">'];
+                for (var i = 0, m; (m = obj.data.markers[i]) && i < 100; i++) {
+                    html.push('id:' + m.oData.id + '; ');
+                    if ((i - 4) % 5 === 0) {
+                        html.push('</dd><dd style="margin: 0;">')
+                    }
+                }
+                html.push('</dd>');
+                if (obj.data.markers.length > 100) {
+                    html.push('<dd style="margin: 0;"> . . . . . . . .  </dd>');
+                }
+                html.push('</dl>')
+                return html.join('');
+            }
         },
         grid: {
             show: false,
@@ -542,22 +559,26 @@ Graph.prototype.initChart = function (id) {
         // animationEasing: 'elasticOut',
         animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
+    var tooltipFn = this.cluster_.getGraphCluster().getTooltipContent_;
     this.graphOpt_ = {
         tooltip: {
             trigger: 'item',
-            formatter: "{b}"
+            // formatter: this.spiderGetTooltipContent_, 
+            formatter: function (obj, ticket) {
+                if (obj.dataType === 'node' && obj.data.oData) {
+                    return tooltipFn(obj.data.oData);
+                }
+            }
         },
         series: [{
             name: id,
             type: 'graph',
             layout: 'force',
-            focusNodeAdjacency: true,
-            roam: false,
-            draggable: false,
             force: {
-                gravity: 1,   // the larger the center     
+                gravity: 5,   // the larger the center     
                 repulsion: 350,
-                layoutAnimation: false
+                edgeLength: 10,
+                layoutAnimation: false // node more than 200 may cause browse crush
             },
             lineStyle: {
                 normal: {
@@ -569,7 +590,7 @@ Graph.prototype.initChart = function (id) {
                 }
             },
             data: spiderData,
-            links:spiderLinks,
+            links: spiderLinks,
         }]
     };
     chart.setOption(this.scatterOpt_);
@@ -580,26 +601,37 @@ Graph.prototype.createCss = function (pos) {
     var txtSize = 11;
     var txtColor = 'black';
     if (pos) {
-        style.push('cursor:pointer;color:' + txtColor + '; font-size:' +
-            txtSize + 'px; font-family:Arial,sans-serif; font-weight:bold;');
+        style.push('cursor:pointer;color:' + txtColor + '; font-size:' + txtSize + 'px;');
+        // style.push('border: 1px solid purple;');
         style.push('height:' + this.height_ + 'px; line-height:' +
-            this.height_ + 'px; width:' + this.width_ + 'px; text-align:center; position:absolute;');
-        style.push('top:' + pos.y + 'px; left:' +
+            this.height_ + 'px; width:' + this.width_ + 'px;');
+        style.push(' position:absolute;top:' + pos.y + 'px; left:' +
             pos.x + 'px;');
     }
     return style.join('');
 };
-Graph.prototype.resetOption = function(option){
+Graph.prototype.resetOption = function (option) {
     this.width_ = this.size_.max + 10;
     this.height_ = this.size_.max + 10;
-    if(!this.spiderOpen_){
-        this.width_ = (this.sums_ * 5 + this.size_.max + 20);
-        this.height_ = (this.sums_ * 5 + this.size_.max+ 20 );
+    if (!this.spiderOpen_) {
+        // this.sums_ * 3 + this.size_.max + 80
+        var s = Math.floor(this.sums_ / 1000);
+        var r = this.sums_ % 1000;
+        var h = Math.floor(r / 100);
+        var r1 = r % 100;
+        var t = Math.floor(r1 / 10);
+        var l = r1 % 10;
+        this.width_ = (s * 500 + h * 200 + t * 30 + l * 10 + 100);
+        this.height_ = (s * 500 + h * 200 + t * 30 + l * 10 + 100);
     }
     if (this.div_) {
         var pos = this.getPosFromLatLng_(this.center_);
         this.div_.style.cssText = this.createCss(pos);
-        // this.div_.style.display = '';
+        if(!this.spiderOpen_){
+            this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1000;
+        } else{
+            this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
+        }
     }
     this.chart_.resize({
         width: this.width_,
@@ -607,7 +639,7 @@ Graph.prototype.resetOption = function(option){
     });
     this.chart_.clear();
     this.chart_.setOption(option);
-    this.spiderOpen_ = ! this.spiderOpen_;
+    this.spiderOpen_ = !this.spiderOpen_;
 };
 /**
  * Triggers the clusterclick event and zoom's if the option is set.
@@ -619,7 +651,7 @@ Graph.prototype.triggerClusterClick = function () {
     if (graphCluster.isZoomOnClick()) {
         //Zoom into the cluster.
         this.map_.fitBounds(this.cluster_.getBounds());
-    } else{
+    } else {
         var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
         this.resetOption(option);
     }
@@ -684,7 +716,8 @@ ClickControl.prototype.createControlCss = function (url) {
     style.push('height:' + height + 'px; line-height:' +
         this.height_ + 'px; width:' + width + 'px; text-align:center;');
     style.push('cursor:pointer;opacity:0.5;padding: 6px;');
-    style.push('background-color: white;background-repeat: no-repeat;background-position: center;')
+    style.push('background-color: white;background-repeat: no-repeat;' +
+        'background-position: center;')
     return style.join('');
 };
 ClickControl.prototype.setZoomin = function (zoomin) {
@@ -726,9 +759,11 @@ MarkerTooltip.prototype.createTooltipCss = function () {
     // var height = 80;
     // var width = 80;
     style.push('position:absolute;');
-    style.push('background-color:rgba(50,50,50,0.7);border-radius: 4px; color: rgb(255,255,255);');
+    style.push('background-color:rgba(50,50,50,0.7);' +
+        'border-radius: 4px; color: rgb(255,255,255);');
     style.push('padding: 5px;z-index:99999;white-space: nowrap;');
-    style.push('transition: left 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s, top 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s;');
+    style.push('transition: left 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s, ' +
+        'top 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s;');
     // style.push('height:' + height + 'px; line-height:' +
     //     this.height_ + 'px; width:' + width + 'px;');
     return style.join('');
