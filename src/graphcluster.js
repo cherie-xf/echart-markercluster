@@ -680,7 +680,7 @@ function ClickControl(map) {
     var zoominUI = document.createElement('div');
     zoominUI.id = "zoominUI";
     zoominUI.title = "cluster click zoom in";
-    var zoominUrl = '../images/zoom_in.png'
+    var zoominUrl = 'images/zoom_in.png'
     zoominUI.style.cssText = this.createControlCss(zoominUrl);
     zoominUI.style['border-right'] = '1px solid #888888';
     zoominUI.style['opacity'] = '1';
@@ -690,7 +690,7 @@ function ClickControl(map) {
     var spiderUI = document.createElement('div');
     spiderUI.id = "spiderUI";
     spiderUI.title = "cluster click expand spider";
-    var spiderUrl = '../images/spider.png'
+    var spiderUrl = 'images/spider.png'
     spiderUI.style.cssText = this.createControlCss(spiderUrl);
     this.clickControlUI_.appendChild(spiderUI);
     // Setup the click event listeners: simply set the map to Chicago.
