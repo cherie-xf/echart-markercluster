@@ -1,7 +1,7 @@
 function initMap() {
     var nightStyle = null;
     var markerImg = {
-        url: '../images/marker6.png',
+        url: 'images/marker6.png',
         scaledSize: new google.maps.Size(40, 40),
     };
 
