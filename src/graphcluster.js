@@ -357,6 +357,9 @@ Cluster.prototype.setId = function (id) {
 Cluster.prototype.getId = function () {
     return this.id_
 };
+Cluster.prototype.getMarkers = function(){
+    return this.markers_;
+}
 /**
  * Removes the cluster
  */
@@ -383,6 +386,9 @@ function Graph(cluster) {
     this.expand_ = false;
     this.setMap(this.map_);
     this.chart_ = null;
+    this.scatterOpt_ = null;
+    this.graphOpt_ = null;
+    this.spiderOpen_ = false;
 }
 Graph.prototype.setCenter = function (center) {
     this.center_ = center;
@@ -465,8 +471,24 @@ Graph.prototype.initChart = function (id) {
         // symbolSize: (40 - 30) / (2749 - 2) * this.sums_ + 30 // min size 30, max size 40
         symbolSize: symbolSize,
     }];
+    var spiderData = this.cluster_.getMarkers().map(function(m){
+        return {
+            name: m.oData.id,
+            symbolSize: 15,
+        };
+    });
+    spiderData.unshift({
+        name: 'cluster',
+        symbolSize: 1,
+    });
+    var spiderLinks = spiderData.map(function(d,i){
+        return {
+            source: 0,
+            target: i,
+        };
+    });
     var chart = echarts.init(document.getElementById(id), "macarons");
-    var option = {
+    this.scatterOpt_ = {
         tooltip: {
             trigger: 'item',
             formatter: "{b}"
@@ -520,7 +542,37 @@ Graph.prototype.initChart = function (id) {
         // animationEasing: 'elasticOut',
         animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
-    chart.setOption(option);
+    this.graphOpt_ = {
+        tooltip: {
+            trigger: 'item',
+            formatter: "{b}"
+        },
+        series: [{
+            name: id,
+            type: 'graph',
+            layout: 'force',
+            focusNodeAdjacency: true,
+            roam: false,
+            draggable: false,
+            force: {
+                gravity: 1,   // the larger the center     
+                repulsion: 350,
+                layoutAnimation: false
+            },
+            lineStyle: {
+                normal: {
+                    opacity: 0.9,
+                    width: 1,
+                },
+                emphasis: {
+                    color: '#ec407a'
+                }
+            },
+            data: spiderData,
+            links:spiderLinks,
+        }]
+    };
+    chart.setOption(this.scatterOpt_);
     return chart
 };
 Graph.prototype.createCss = function (pos) {
@@ -537,7 +589,26 @@ Graph.prototype.createCss = function (pos) {
     }
     return style.join('');
 };
-
+Graph.prototype.resetOption = function(option){
+    this.width_ = this.size_.max + 10;
+    this.height_ = this.size_.max + 10;
+    if(!this.spiderOpen_){
+        this.width_ = (this.sums_ * 5 + this.size_.max + 20);
+        this.height_ = (this.sums_ * 5 + this.size_.max+ 20 );
+    }
+    if (this.div_) {
+        var pos = this.getPosFromLatLng_(this.center_);
+        this.div_.style.cssText = this.createCss(pos);
+        // this.div_.style.display = '';
+    }
+    this.chart_.resize({
+        width: this.width_,
+        height: this.height_,
+    });
+    this.chart_.clear();
+    this.chart_.setOption(option);
+    this.spiderOpen_ = ! this.spiderOpen_;
+};
 /**
  * Triggers the clusterclick event and zoom's if the option is set.
  */
@@ -548,6 +619,9 @@ Graph.prototype.triggerClusterClick = function () {
     if (graphCluster.isZoomOnClick()) {
         //Zoom into the cluster.
         this.map_.fitBounds(this.cluster_.getBounds());
+    } else{
+        var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
+        this.resetOption(option);
     }
 };
 /**
@@ -674,7 +748,6 @@ MarkerTooltip.prototype.hide = function () {
         this.div_.style.display = 'none'
     }
 }
-
 MarkerTooltip.prototype.getPosFromLatLng_ = function (latlng) {
     return this.graphCluster_.getProjection().fromLatLngToDivPixel(latlng);
 }
