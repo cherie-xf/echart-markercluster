@@ -471,39 +471,22 @@ Graph.prototype.initChart = function (id) {
         // offset: [0, 0],
         // symbolSize: (40 - 30) / (2749 - 2) * this.sums_ + 30 // min size 30, max size 40
         symbolSize: symbolSize,
-        markers: this.cluster_.getMarkers(),
+        oData: this.cluster_.getMarkers().map(function(m){return m.oData}),
     }];
-    var spiderData = this.cluster_.getMarkers().map(function (m) {
-        return {
-            name: m.oData.id,
-            symbolSize: 15,
-            oData: m.oData,
-        };
-    });
-    spiderData.unshift({
-        name: 'cluster',
-        symbolSize: 1,
-    });
-    var spiderLinks = spiderData.map(function (d, i) {
-        return {
-            source: 0,
-            target: i,
-        };
-    });
     var chart = echarts.init(document.getElementById(id), "macarons");
     this.scatterOpt_ = {
         tooltip: {
             trigger: 'item',
             formatter: function (obj) {
                 var html = ['<dl style="margin: 20px 20px;"><dd style="margin: 0;">'];
-                for (var i = 0, m; (m = obj.data.markers[i]) && i < 100; i++) {
-                    html.push('id:' + m.oData.id + '; ');
+                for (var i = 0, m; (m = obj.data.oData[i]) && i < 100; i++) {
+                    html.push('id:' + m.id + '; ');
                     if ((i - 4) % 5 === 0) {
                         html.push('</dd><dd style="margin: 0;">')
                     }
                 }
                 html.push('</dd>');
-                if (obj.data.markers.length > 100) {
+                if (obj.data.oData.length > 100) {
                     html.push('<dd style="margin: 0;"> . . . . . . . .  </dd>');
                 }
                 html.push('</dl>')
@@ -521,7 +504,6 @@ Graph.prototype.initChart = function (id) {
             gridIndex: 0,
             min: 0,
             max: this.size_.max,
-            // show: true,
             show: false,
             nameLocation: 'middle',
         }],
@@ -529,7 +511,6 @@ Graph.prototype.initChart = function (id) {
             min: 0,
             max: this.size_.max,
             gridIndex: 0,
-            // show: true,
             show: false,
             nameLocation: 'middle',
         }],
@@ -549,21 +530,36 @@ Graph.prototype.initChart = function (id) {
             },
             itemStyle: {
                 normal: {
-                    // color: '#00acea',
                     opacity: 0.8,
                 }
             },
             data: data,
             animationDelay: parseInt(id.split('_')[1]) * 20,
         }],
-        // animationEasing: 'elasticOut',
         animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
+    chart.setOption(this.scatterOpt_);
+    var spiderData = this.cluster_.getMarkers().map(function (m) {
+        return {
+            name: m.oData.id,
+            symbolSize: 15,
+            oData: m.oData,
+        };
+    });
+    spiderData.unshift({
+        name: 'cluster',
+        symbolSize: 1,
+    });
+    var spiderLinks = spiderData.map(function (d, i) {
+        return {
+            source: 0,
+            target: i,
+        };
+    });
     var tooltipFn = this.cluster_.getGraphCluster().getTooltipContent_;
     this.graphOpt_ = {
         tooltip: {
             trigger: 'item',
-            // formatter: this.spiderGetTooltipContent_, 
             formatter: function (obj, ticket) {
                 if (obj.dataType === 'node' && obj.data.oData) {
                     return tooltipFn(obj.data.oData);
@@ -593,7 +589,6 @@ Graph.prototype.initChart = function (id) {
             links: spiderLinks,
         }]
     };
-    chart.setOption(this.scatterOpt_);
     return chart
 };
 Graph.prototype.createCss = function (pos) {
