@@ -94,8 +94,9 @@ GraphCluster.prototype.onRemove = function () {
 GraphCluster.prototype.initMarkers = function (data) {
     var bounds = new google.maps.LatLngBounds();
     for (var i = 0, d; d = data[i]; i++) {
+        var position = new google.maps.LatLng(d.lat, d.lng);
         var marker = new google.maps.Marker({
-            position: d.position,
+            position: position,
             label: d.label,
             icon: this.markerImg_,
             map: this.map_,
@@ -471,25 +472,41 @@ Graph.prototype.initChart = function (id) {
         // offset: [0, 0],
         // symbolSize: (40 - 30) / (2749 - 2) * this.sums_ + 30 // min size 30, max size 40
         symbolSize: symbolSize,
-        oData: this.cluster_.getMarkers().map(function(m){return m.oData}),
+        oData: this.cluster_.getMarkers().map(function (m) { return m.oData }),
     }];
     var chart = echarts.init(document.getElementById(id), "macarons");
     this.scatterOpt_ = {
         tooltip: {
             trigger: 'item',
             formatter: function (obj) {
-                var html = ['<dl style="margin: 20px 20px;"><dd style="margin: 0;">'];
-                for (var i = 0, m; (m = obj.data.oData[i]) && i < 100; i++) {
-                    html.push('id:' + m.id + '; ');
-                    if ((i - 4) % 5 === 0) {
-                        html.push('</dd><dd style="margin: 0;">')
+                // var html = ['<dl style="margin: 20px 20px;"><dd style="margin: 0;">'];
+                // for (var i = 0, m; (m = obj.data.oData[i]) && i < 100; i++) {
+                //     html.push('id:' + m.id + '; ');
+                //     if ((i - 4) % 5 === 0) {
+                //         html.push('</dd><dd style="margin: 0;">')
+                //     }
+                // }
+                // html.push('</dd>');
+                // if (obj.data.oData.length > 100) {
+                //     html.push('<dd style="margin: 0;"> . . . . . . . .  </dd>');
+                // }
+                // html.push('</dl>')
+                var html = ['<table style="font-size: 10px"><thead><tr>']
+                for (var i = 0, key; key = Object.keys(obj.data.oData[0])[i]; i++) {
+                    html.push('<th>' + key + '</th>');
+                }
+                html.push('</tr></thead><tbody>');
+                for (var i = 0, m; (m = obj.data.oData[i]) && i < 10; i++) {
+                    html.push('<tr>');
+                    for (var j = 0, key; key = Object.keys(m)[j]; j++) {
+                        html.push('<td>' + obj.data.oData[i][key] + '</td>');
                     }
+                    html.push('</tr>');
                 }
-                html.push('</dd>');
-                if (obj.data.oData.length > 100) {
-                    html.push('<dd style="margin: 0;"> . . . . . . . .  </dd>');
+                if (obj.data.oData.length > 10) {
+                    html.push('<tr><td> . . . . . . . .  </td>');
                 }
-                html.push('</dl>')
+                html.push('</tbody></table>');
                 return html.join('');
             }
         },
@@ -622,9 +639,9 @@ Graph.prototype.resetOption = function (option) {
     if (this.div_) {
         var pos = this.getPosFromLatLng_(this.center_);
         this.div_.style.cssText = this.createCss(pos);
-        if(!this.spiderOpen_){
+        if (!this.spiderOpen_) {
             this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1000;
-        } else{
+        } else {
             this.div_.style.zIndex = google.maps.Marker.MAX_ZINDEX + 1;
         }
     }
