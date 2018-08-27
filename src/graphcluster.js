@@ -276,6 +276,9 @@ GraphCluster.prototype.getTooltipContent_ = function (oData) {
     return html.join('');
 
 }
+GraphCluster.prototype.getChartSettings = function () {
+    return this.opts_.chartSettings ? this.opts_.chartSettings : {};
+}
 
 /**
  * @param {GraphCluster} graphCluster 
@@ -382,6 +385,7 @@ function Graph(cluster) {
     this.map_ = cluster.getMap();
     this.sums_ = '';
     this.size_ = cluster.size_ ? cluster.size_ : { max: 40, min: 30 };
+    this.chartSettings_ = cluster.getGraphCluster().getChartSettings();
     this.totalNum_ = cluster.totalNum_;
     this.width_ = this.size_.max + 10;
     this.height_ = this.size_.max + 10;
@@ -390,6 +394,7 @@ function Graph(cluster) {
     this.chart_ = null;
     this.scatterOpt_ = null;
     this.graphOpt_ = null;
+    this.pieOpt_ = null;
     this.spiderOpen_ = false;
 }
 Graph.prototype.setCenter = function (center) {
@@ -547,6 +552,8 @@ Graph.prototype.initChart = function (id) {
             },
             itemStyle: {
                 normal: {
+                    color: this.chartSettings_.scatter && this.chartSettings_.scatter.color ?
+                        this.chartSettings_.scatter.color : '#c23531',
                     opacity: 0.8,
                 }
             },
@@ -555,14 +562,26 @@ Graph.prototype.initChart = function (id) {
         }],
         animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
-    chart.setOption(this.scatterOpt_);
+
+    var spiderKey = this.chartSettings_.spider && this.chartSettings_.spider.group &&
+        this.chartSettings_.spider.group.key ? this.chartSettings_.spider.group.key : null;
+    if (spiderKey) {
+        // var spiderGroupKeys = [];
+        var spiderColors = this.chartSettings_.spider.group.colorMap;
+    }
     var spiderData = this.cluster_.getMarkers().map(function (m) {
+        // if (spiderKey && spiderGroupKeys.indexOf(m.oData[spiderKey]) < 0) {
+        //     spiderGroupKeys.push(m.oData[spiderKey]);
+        // }
         return {
             name: m.oData.id,
             symbolSize: 15,
             oData: m.oData,
         };
     });
+    spiderData = spiderData.map(d => {
+        return Object.assign({ itemStyle: { color: spiderColors ? spiderColors[d.oData[spiderKey]] : '#c23531' } }, d);
+    })
     spiderData.unshift({
         name: 'cluster',
         symbolSize: 1,
@@ -606,6 +625,70 @@ Graph.prototype.initChart = function (id) {
             links: spiderLinks,
         }]
     };
+
+    var pieKey = this.chartSettings_.pie && this.chartSettings_.pie.group &&
+        this.chartSettings_.pie.group.key ? this.chartSettings_.pie.group.key : null;
+    if (pieKey) {
+        var pieColors = this.chartSettings_.pie.group.colorMap;
+    }
+    var pieData = [];
+    var pieGroupMap = new Map();
+    this.cluster_.getMarkers().map(function (m) {
+        if (!pieGroupMap.has(m.oData[pieKey])) {
+            pieGroupMap.set(m.oData[pieKey], 1);
+        } else {
+            pieGroupMap.set(m.oData[pieKey], pieGroupMap.get(m.oData[pieKey]) + 1);
+        }
+    });
+    pieGroupMap.forEach(function (value, key) {
+        pieData.push({
+            name: key,
+            value: value,
+            itemStyle: {
+                normal: { color: pieColors[key] }
+            }
+        });
+    })
+    this.pieOpt_ = {
+        grid: {
+            top: 5,
+            left: 5,
+            right: 5,
+            bottom: 5
+        },
+        title: {
+            text: this.sums_,
+            x: 'center',
+            y: 'center',
+            textStyle: {
+                // fontWeight:'normal',
+                fontSize: '12'
+            }
+        },
+        tooltip: {
+            show: true,
+            formatter: function (a) {
+                var html = ['<div>'];
+                html.push(a.marker);
+                html.push('<span>' + a.name + ':    ' + a.value + '</span></div>');
+                return html.join('');
+            }
+        },
+        series: [{
+            name: id,
+            type: 'pie',
+            radius: [this.sums_ / (this.totalNum_ - 2) * (70 - 40) + 40 + '%', this.sums_ / (this.totalNum_ - 2) * (86 - 55) + 55 + '%',],
+            hoverOffset: 5,
+            itemStyle: { normal: { label: { show: false } } },
+            data: pieData,
+            animationDelay: parseInt(id.split('_')[1]) * 20,
+        }],
+        animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
+    };
+
+    chart.setOption(this.scatterOpt_);
+    // chart.setOption(this.pieOpt_);
+
     return chart
 };
 Graph.prototype.createCss = function (pos) {
@@ -664,8 +747,14 @@ Graph.prototype.triggerClusterClick = function () {
         //Zoom into the cluster.
         this.map_.fitBounds(this.cluster_.getBounds());
     } else {
-        var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
-        this.resetOption(option);
+        if (parseInt(this.sums_) > 500) {
+            // if count more than 500 will not open the spder instead will zoom into the cluster.
+            this.map_.fitBounds(this.cluster_.getBounds());
+        } else {
+            var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
+            this.resetOption(option);
+
+        }
     }
 };
 /**
@@ -701,7 +790,7 @@ function ClickControl(map) {
 
     var spiderUI = document.createElement('div');
     spiderUI.id = "spiderUI";
-    spiderUI.title = "cluster click expand spider";
+    spiderUI.title = "cluster click expand spider(number less than 500)";
     var spiderUrl = 'images/spider.png'
     spiderUI.style.cssText = this.createControlCss(spiderUrl);
     this.clickControlUI_.appendChild(spiderUI);

@@ -16,11 +16,46 @@ function initMap() {
     });
     var graphCluster = new GraphCluster(map, data, {
         size: {
-            min: 30, //symbol minimum size
-            max: 60, //symbol maximum size
+            min: 30, //scatter symbol minimum size
+            max: 60, //scatter symbol maximum size
         },
         clickControl: true,
         markerImg: markerImg,
+        chartSettings:{
+            scatter: {
+                color: '#e01f54',
+            },
+            spider:{
+                group:{
+                    key: 'property_type',
+                    colorMap:{
+                        'house': '#9b8bba',
+                        'townhouse': '#e098c7',
+                        'apartment_condo': '#d3758f',
+                        'duplex': '#e01f54',
+                        'multifamily': '#001852',
+                        'mfd_mobile_home': '#f5e8c8',
+                        'other': '#b8d2c7',
+                    },
+                },
+            },
+            pie:{
+                group:{
+                    key: 'property_type',
+                    colorMap:{
+                        'house': '#9b8bba',
+                        'townhouse': '#e098c7',
+                        'apartment_condo': '#d3758f',
+                        'duplex': '#e01f54',
+                        'multifamily': '#001852',
+                        'mfd_mobile_home': '#f5e8c8',
+                        'other': '#b8d2c7',
+                    },
+                },
+
+            },
+
+        }
     });
 
 }
