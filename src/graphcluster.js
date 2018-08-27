@@ -24,6 +24,9 @@ function GraphCluster(map, opt_data, opt_options) {
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
+    if (this.opts_.typeControl) {
+        this.typeControl_ = new TypeControl(this.map_);
+    }
     if (this.opts_.clickControl) {
         this.clickControl_ = new ClickControl(this.map_);
     }
@@ -237,6 +240,9 @@ GraphCluster.prototype.getExtendedBounds = function (bounds) {
 
 GraphCluster.prototype.isZoomOnClick = function () {
     return this.clickControl_ && this.clickControl_.getZoomin();
+}
+GraphCluster.prototype.getCluserType = function () {
+    return this.clickControl_ && this.clickControl_.getCluserType();
 }
 GraphCluster.prototype.getTooltip = function () {
     return this.tooltip_;
@@ -607,9 +613,9 @@ Graph.prototype.initChart = function (id) {
             type: 'graph',
             layout: 'force',
             force: {
-                gravity: 5,   // the larger the center     
+                gravity: 1,   // the larger the center     
                 repulsion: 350,
-                edgeLength: 10,
+                // edgeLength: 10,
                 layoutAnimation: false // node more than 200 may cause browse crush
             },
             lineStyle: {
@@ -716,8 +722,8 @@ Graph.prototype.resetOption = function (option) {
         var r1 = r % 100;
         var t = Math.floor(r1 / 10);
         var l = r1 % 10;
-        this.width_ = (s * 500 + h * 200 + t * 30 + l * 10 + 100);
-        this.height_ = (s * 500 + h * 200 + t * 30 + l * 10 + 100);
+        this.width_ = (s * 500 + h * 320 + t * 50 + l * 10 + 100);
+        this.height_ = (s * 500 + h * 320 + t * 50 + l * 10 + 100);
     }
     if (this.div_) {
         var pos = this.getPosFromLatLng_(this.center_);
@@ -769,6 +775,7 @@ function ClickControl(map) {
         this.clickControlUI_.id = "click-control";
         this.clickControlUI_.index = 1;
         this.clickControlUI_.style['margin-top'] = '10px';
+        this.clickControlUI_.style['margin-right'] = '20px';
         this.clickControlUI_.style['display'] = 'flex';
         this.clickControlUI_.style['border-radius'] = '2px';
         this.clickControlUI_.style['background-color'] = 'white';
@@ -826,6 +833,77 @@ ClickControl.prototype.setZoomin = function (zoomin) {
 }
 ClickControl.prototype.getZoomin = function () {
     return this.zoomin_;
+}
+
+/**
+ * Class of TypeControl
+ * @param {*} map 
+ * Cluster tylpe control to switch between scatter or pie 
+ */
+function TypeControl(map) {
+    this.typeControlUI_ = document.getElementById('click-control');
+    if (!this.typeControlUI_) {
+        this.typeControlUI_ = document.createElement('div');
+        this.typeControlUI_.id = "click-control";
+        this.typeControlUI_.index = 1;
+        this.typeControlUI_.style['margin-top'] = '10px';
+        this.typeControlUI_.style['margin-right'] = '20px';
+        this.typeControlUI_.style['display'] = 'flex';
+        this.typeControlUI_.style['border-radius'] = '2px';
+        this.typeControlUI_.style['background-color'] = 'white';
+        this.typeControlUI_.style['padding'] = '5px';
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(this.typeControlUI_);
+
+    }
+    this.clusterType_ = 'scatter';
+    var scatterUI = document.createElement('div');
+    scatterUI.id = "scatterUI";
+    scatterUI.title = "show Scattor";
+    var scatterUrl = 'images/bubble.png'
+    scatterUI.style.cssText = this.createControlCss(scatterUrl);
+    scatterUI.style['border-right'] = '1px solid #888888';
+    scatterUI.style['opacity'] = '1';
+
+    this.typeControlUI_.appendChild(scatterUI);
+
+    var pieUI = document.createElement('div');
+    pieUI.id = "pieUI";
+    pieUI.title = "show Pie";
+    var spiderUrl = 'images/pie.png'
+    pieUI.style.cssText = this.createControlCss(spiderUrl);
+    this.typeControlUI_.appendChild(pieUI);
+    // Setup the click event listeners: simply set the map to Chicago.
+    var that = this;
+    scatterUI.addEventListener('click', function () {
+        scatterUI.style['opacity'] = '1';
+        pieUI.style['opacity'] = '0.5';
+        that.setClusterType('scatter');
+    });
+    // Setup the click event listeners: simply set the map to Chicago.
+    pieUI.addEventListener('click', function () {
+        pieUI.style['opacity'] = '1';
+        scatterUI.style['opacity'] = '0.5';
+        that.setClusterType('pie');
+    });
+
+}
+TypeControl.prototype.createControlCss = function (url) {
+    var style = [];
+    var height = 18;
+    var width = 18;
+    style.push('background-image:url(' + url + ');');
+    style.push('height:' + height + 'px; line-height:' +
+        this.height_ + 'px; width:' + width + 'px; text-align:center;');
+    style.push('cursor:pointer;opacity:0.5;padding: 6px;');
+    style.push('background-color: white;background-repeat: no-repeat;' +
+        'background-position: center;')
+    return style.join('');
+};
+TypeControl.prototype.setClusterType = function (type) {
+    this.clusterType_ = type;
+}
+TypeControl.prototype.getCluserType = function(){
+    return this.clusterType_;
 }
 
 function MarkerTooltip(graphCluster) {
