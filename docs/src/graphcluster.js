@@ -45,6 +45,11 @@ function GraphCluster(map, opt_data, opt_options) {
     google.maps.event.addListener(this.map_, 'idle', function () {
         that.createClusters();
     })
+
+    google.maps.event.addListener(this.map_, 'type_changed', function () {
+        that.resetViewport();
+        that.createClusters();
+    })
     // init cluster
     if (this.data_ && this.data_.length > 0) {
         this.initMarkers(this.data_);
@@ -242,7 +247,7 @@ GraphCluster.prototype.isZoomOnClick = function () {
     return this.clickControl_ && this.clickControl_.getZoomin();
 }
 GraphCluster.prototype.getCluserType = function () {
-    return this.clickControl_ && this.clickControl_.getCluserType();
+    return this.typeControl_ && this.typeControl_.getCluserType();
 }
 GraphCluster.prototype.getTooltip = function () {
     return this.tooltip_;
@@ -692,8 +697,12 @@ Graph.prototype.initChart = function (id) {
         animationDelayUpdate: parseInt(id.split('_')[1]) * 20,
     };
 
-    chart.setOption(this.scatterOpt_);
-    // chart.setOption(this.pieOpt_);
+    var type = this.cluster_.getGraphCluster().getCluserType();
+    if (type === 'pie') {
+        chart.setOption(this.pieOpt_);
+    } else {
+        chart.setOption(this.scatterOpt_);
+    }
 
     return chart
 };
@@ -747,6 +756,7 @@ Graph.prototype.resetOption = function (option) {
  */
 Graph.prototype.triggerClusterClick = function () {
     var graphCluster = this.cluster_.getGraphCluster();
+    var graphType =  this.cluster_.getGraphCluster().getCluserType();
     // TODO: Trigger the clusterclick event. 
     google.maps.event.trigger(graphCluster.map_, 'clusterclick', this.cluster_);
     if (graphCluster.isZoomOnClick()) {
@@ -757,7 +767,13 @@ Graph.prototype.triggerClusterClick = function () {
             // if count more than 500 will not open the spder instead will zoom into the cluster.
             this.map_.fitBounds(this.cluster_.getBounds());
         } else {
-            var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
+            var option = this.scatterOpt_;
+            if (!this.spiderOpen_) {
+                option = this.graphOpt_;
+            } else if (graphType === 'pie') {
+                option = this.pieOpt_;
+            }
+            // var option = this.spiderOpen_ ? this.scatterOpt_ : this.graphOpt_;
             this.resetOption(option);
 
         }
@@ -841,6 +857,7 @@ ClickControl.prototype.getZoomin = function () {
  * Cluster tylpe control to switch between scatter or pie 
  */
 function TypeControl(map) {
+    this.map_ = map;
     this.typeControlUI_ = document.getElementById('click-control');
     if (!this.typeControlUI_) {
         this.typeControlUI_ = document.createElement('div');
@@ -852,7 +869,7 @@ function TypeControl(map) {
         this.typeControlUI_.style['border-radius'] = '2px';
         this.typeControlUI_.style['background-color'] = 'white';
         this.typeControlUI_.style['padding'] = '5px';
-        map.controls[google.maps.ControlPosition.TOP_CENTER].push(this.typeControlUI_);
+        this.map_.controls[google.maps.ControlPosition.TOP_CENTER].push(this.typeControlUI_);
 
     }
     this.clusterType_ = 'scatter';
@@ -878,12 +895,14 @@ function TypeControl(map) {
         scatterUI.style['opacity'] = '1';
         pieUI.style['opacity'] = '0.5';
         that.setClusterType('scatter');
+        google.maps.event.trigger(that.map_, 'type_changed',{});
     });
     // Setup the click event listeners: simply set the map to Chicago.
     pieUI.addEventListener('click', function () {
         pieUI.style['opacity'] = '1';
         scatterUI.style['opacity'] = '0.5';
         that.setClusterType('pie');
+        google.maps.event.trigger(that.map_, 'type_changed',{});
     });
 
 }
@@ -902,7 +921,7 @@ TypeControl.prototype.createControlCss = function (url) {
 TypeControl.prototype.setClusterType = function (type) {
     this.clusterType_ = type;
 }
-TypeControl.prototype.getCluserType = function(){
+TypeControl.prototype.getCluserType = function () {
     return this.clusterType_;
 }
 
