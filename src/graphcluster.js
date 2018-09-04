@@ -673,7 +673,8 @@ Graph.prototype.initChart = function (id) {
             y: 'center',
             textStyle: {
                 // fontWeight:'normal',
-                fontSize: '12'
+                fontSize: '12',
+                color:'#ff6347'
             }
         },
         tooltip: {
