@@ -74,8 +74,8 @@ function initMap() {
             min: 30, //scatter symbol minimum size
             max: 60, //scatter symbol maximum size
         },
-        clickControl: true,
-        typeControl: true,
+        //clickControl: true,
+        //typeControl: true,
         markerImg: markerImg,
         chartSettings:{
             scatter: {

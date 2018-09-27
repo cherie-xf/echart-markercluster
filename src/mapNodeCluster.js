@@ -1,7 +1,3 @@
-define([
-    'util',
-    'echarts'
-], function (Util, echarts) {
 
     function GraphCluster(map, opt_data, opt_options) {
         this.extend(GraphCluster, google.maps.OverlayView);
@@ -30,7 +26,7 @@ define([
             var zoom = that.map_.getZoom();
             if (that.prevZoom_ !== zoom) {
                 that.prevZoom_ = zoom;
-                that.resetViewport();
+                that.resetViewport(true);
             }
         })
 
@@ -39,10 +35,6 @@ define([
             that.createClusters();
         })
 
-        google.maps.event.addListener(this.map_, 'type_changed', function () {
-            that.resetViewport();
-            that.createClusters();
-        })
         // init cluster
         if (this.data_ && this.data_.length > 0) {
             this.initMarkers(this.data_);
@@ -188,8 +180,8 @@ define([
             var marker = this.markers_[j];
             marker.isAdded = false;
             if (opt_hide) {
-                //marker.setMap(null);
-                marker.remove();
+                marker.hide();
+                marker.setMap(null);
             }
         }
         this.clusters_ = [];
@@ -317,7 +309,7 @@ define([
         for (var i = 0; i <= (markers.length - 1); i++) {
             var marker = markers[i];
             bounds.extend(marker.getPosition());
-            console.log('marker position', maker.getPosition().lat(), maker.getPosition().lng());
+            console.log('marker position', marker.getPosition().lat(), marker.getPosition().lng());
         }
         return bounds;
     };
@@ -347,22 +339,22 @@ define([
         var len = this.markers_.length;
         if (len < 2 && marker.getMap() != this.map_) {
             // Min cluster size not reached so show the marker.
-            //marker.setMap(this.map_);
+            marker.setMap(this.map_);
             marker.show();
         }
         if (len === 2) {
             // Hide the markers that were showing.
             for (var i = 0; i < len; i++) {
                 //this.markers_[i].setMap(null);
-                this.markers_[i].remove();
+                this.markers_[i].hide();
             }
             this.graph_.setCenter(this.center_);
             this.graph_.setSum(this.markers_.length)
             this.graph_.show();
         }
         if (len > 2) {
-            //marker.setMap(null);
-            marker.remove();
+            marker.hide();
+            marker.setMap(null);
             this.graph_.setSum(this.markers_.length)
             // this.graph_.update();
         }
@@ -904,7 +896,7 @@ define([
         var txtColor = 'black';
         if (pos) {
             style.push('cursor:pointer;color:' + txtColor + '; font-size:' + txtSize + 'px;');
-            // style.push('border: 1px solid purple;');
+            style.push('border: 1px solid purple;');
             style.push('height:' + this.height_ + 'px; line-height:' +
                 this.height_ + 'px; width:' + this.width_ + 'px;');
             style.push(' position:absolute;top:' + pos.y + 'px; left:' +
@@ -919,8 +911,4 @@ define([
         return this.center_;
     }
 
-    return {
-        GraphCluster: GraphCluster,
-    };
 
-});
