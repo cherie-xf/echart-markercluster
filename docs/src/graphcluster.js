@@ -21,6 +21,7 @@ function GraphCluster(map, opt_data, opt_options) {
     };
     this.prevZoom_ = this.map_.getZoom();
     this.totalNum_ = opt_data ? opt_data.length : 0;
+    this.clusterId_ = 0;
     // Explicitly call setMap on this overlay.
     this.setMap(map);
     var that = this;
@@ -161,7 +162,7 @@ GraphCluster.prototype.addToClosestCluster_ = function (marker) {
         closestCluster.addMarker(marker);
     } else {
         var cluster = new Cluster(this);
-        cluster.setId('cluster_' + this.clusters_.length);
+        cluster.setId('cluster_' + this.getClusterId());
         cluster.addMarker(marker);
         this.clusters_.push(cluster);
     }
@@ -183,6 +184,7 @@ GraphCluster.prototype.resetViewport = function (opt_hide) {
         }
     }
     this.clusters_ = [];
+    this.clusterId_ = 0;
 };
 
 /**
@@ -289,6 +291,10 @@ GraphCluster.prototype.getTooltipContent_ = function (oData) {
 }
 GraphCluster.prototype.getChartSettings = function () {
     return this.opts_.chartSettings ? this.opts_.chartSettings : {};
+}
+GraphCluster.prototype.getClusterId = function () {
+    this.clusterId_++;
+    return this.clusterId_;
 }
 
 /**
@@ -674,7 +680,7 @@ Graph.prototype.initChart = function (id) {
             textStyle: {
                 // fontWeight:'normal',
                 fontSize: '12',
-                color:'#ff6347'
+                color: '#ff6347'
             }
         },
         tooltip: {
@@ -757,7 +763,7 @@ Graph.prototype.resetOption = function (option) {
  */
 Graph.prototype.triggerClusterClick = function () {
     var graphCluster = this.cluster_.getGraphCluster();
-    var graphType =  this.cluster_.getGraphCluster().getCluserType();
+    var graphType = this.cluster_.getGraphCluster().getCluserType();
     // TODO: Trigger the clusterclick event. 
     google.maps.event.trigger(graphCluster.map_, 'clusterclick', this.cluster_);
     if (graphCluster.isZoomOnClick()) {
@@ -896,14 +902,14 @@ function TypeControl(map) {
         scatterUI.style['opacity'] = '1';
         pieUI.style['opacity'] = '0.5';
         that.setClusterType('scatter');
-        google.maps.event.trigger(that.map_, 'type_changed',{});
+        google.maps.event.trigger(that.map_, 'type_changed', {});
     });
     // Setup the click event listeners: simply set the map to Chicago.
     pieUI.addEventListener('click', function () {
         pieUI.style['opacity'] = '1';
         scatterUI.style['opacity'] = '0.5';
         that.setClusterType('pie');
-        google.maps.event.trigger(that.map_, 'type_changed',{});
+        google.maps.event.trigger(that.map_, 'type_changed', {});
     });
 
 }
